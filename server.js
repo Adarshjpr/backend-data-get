@@ -1,7 +1,7 @@
 /**
  * Uncodemy — FREE Playwright recorded course · BACKEND (API only)
  * Saves enrollments to MongoDB and serves them to admin.html.
- * The pages (index.html, thankyou.html, admin.html) are hosted separately.
+ * index.html + thankyou.html are hosted on the website; admin.html is served here at /admin.
  *
  * Run:  npm install  →  copy .env.example to .env and fill it  →  npm start
  */
@@ -71,44 +71,86 @@ function requireAdmin(req, res, next) {
   return res.status(401).json({ ok: false, error: 'Unauthorized' });
 }
 
-/* ---------- PUBLIC: free enrollment ---------- */
+/* ---------- save one enrollment (used by both routes below) ---------- */
+async function saveLead(b, req) {
+  // Never drop a lead silently. Very fast submissions are only flagged as "suspect" for review in admin.
+  const elapsed = Number(b.elapsed);
+  const suspect = Number.isFinite(elapsed) && elapsed > 0 && elapsed < 1500;
+
+  const name = clean(b.name, 80);
+  const phone = clean(b.phone, 10).replace(/\D/g, '');
+  const email = clean(b.email, 120).toLowerCase();
+  const course = clean(b.course, 80) || 'playwright';
+
+  if (name.length < 2) return { ok: false, error: 'Please enter your full name.' };
+  if (!PHONE_RE.test(phone)) return { ok: false, error: 'Please enter a valid 10-digit mobile number.' };
+  if (!EMAIL_RE.test(email)) return { ok: false, error: 'Please enter a valid email address.' };
+
+  const now = new Date();
+  const r = await leads.updateOne(
+    { email, course },
+    {
+      $set: {
+        name, phone, lastSeenAt: now,
+        page: clean(b.page, 200),
+        userAgent: clean(req.get('user-agent'), 200),
+        ip: req.ip,
+        suspect,
+      },
+      $setOnInsert: {
+        createdAt: now, status: 'new',
+        // first-touch attribution: where the lead originally came from
+        utm: { source: clean(b.utm_source, 60), medium: clean(b.utm_medium, 60), campaign: clean(b.utm_campaign, 80) },
+      },
+      $inc: { attempts: 1 },
+    },
+    { upsert: true }
+  );
+  return { ok: true, existing: !(r && r.upsertedCount) };
+}
+
+/* Only redirect back to our own website (prevents open-redirect abuse) */
+function safeUrl(u) {
+  try {
+    const url = new URL(String(u || ''));
+    if (!/^https?:$/.test(url.protocol)) return null;
+    if (origins.length && !origins.includes(url.origin)) return null;
+    return url;
+  } catch (e) { return null; }
+}
+
+/* ---------- PUBLIC: free enrollment via JSON (works when page + API share http/https) ---------- */
 app.post('/api/leads', rateLimit(20, 10 * 60 * 1000), async (req, res) => {
   try {
-    const b = req.body || {};
-    if (b.website) return res.json({ ok: true }); // honeypot: bots fill hidden field
-
-    const name = clean(b.name, 80);
-    const phone = clean(b.phone, 10).replace(/\D/g, '');
-    const email = clean(b.email, 120).toLowerCase();
-    const course = clean(b.course, 80) || 'playwright';
-
-    if (name.length < 2) return res.status(400).json({ ok: false, error: 'Please enter your full name.' });
-    if (!PHONE_RE.test(phone)) return res.status(400).json({ ok: false, error: 'Please enter a valid 10-digit mobile number.' });
-    if (!EMAIL_RE.test(email)) return res.status(400).json({ ok: false, error: 'Please enter a valid email address.' });
-
-    const now = new Date();
-    const r = await leads.updateOne(
-      { email, course },
-      {
-        $set: {
-          name, phone, lastSeenAt: now,
-          page: clean(b.page, 200),
-          userAgent: clean(req.get('user-agent'), 200),
-          ip: req.ip,
-        },
-        $setOnInsert: {
-          createdAt: now, status: 'new',
-          // first-touch attribution: where the lead originally came from
-          utm: { source: clean(b.utm_source, 60), medium: clean(b.utm_medium, 60), campaign: clean(b.utm_campaign, 80) },
-        },
-        $inc: { attempts: 1 },
-      },
-      { upsert: true }
-    );
-    res.json({ ok: true, existing: !(r && r.upsertedCount) });
+    const out = await saveLead(req.body || {}, req);
+    res.status(out.ok ? 200 : 400).json(out);
   } catch (err) {
     console.error('POST /api/leads', err);
     res.status(500).json({ ok: false, error: 'Server error' });
+  }
+});
+
+/* ---------- PUBLIC: free enrollment via redirect ----------
+   The https page sends the browser here (http://IP:PORT/api/enroll?...), we save,
+   then redirect back to thankyou.html. Works without nginx/SSL because a page
+   navigation is allowed from https → http (a background fetch is not). */
+app.get('/api/enroll', rateLimit(20, 10 * 60 * 1000), async (req, res) => {
+  const ty = safeUrl(req.query.ty);
+  const back = safeUrl(req.query.back);
+  const sendBack = (msg) => {
+    if (!back) return res.status(400).type('text').send(msg + ' Please go back and try again.');
+    back.searchParams.set('enroll_error', msg);
+    back.hash = 'enroll';
+    res.redirect(303, back.toString());
+  };
+  try {
+    const out = await saveLead(req.query || {}, req);
+    if (!out.ok) return sendBack(out.error);
+    if (!ty) return res.type('html').send('<meta name="viewport" content="width=device-width"><p style="font:16px sans-serif;padding:24px">✅ Thank you! You are enrolled. Our team will call you and email the course details within 24 hours.</p>');
+    res.redirect(303, ty.toString());
+  } catch (err) {
+    console.error('GET /api/enroll', err);
+    sendBack('Something went wrong on our side.');
   }
 });
 
@@ -160,6 +202,15 @@ app.patch('/api/admin/leads/:id', requireAdmin, async (req, res) => {
     console.error('PATCH /api/admin/leads', err);
     res.status(500).json({ ok: false, error: 'Server error' });
   }
+});
+
+/* ---------- admin page (open http://YOUR-IP:PORT/admin) ---------- */
+app.get(['/admin', '/admin.html'], (req, res) => {
+  res.set({ 'X-Robots-Tag': 'noindex, nofollow', 'Cache-Control': 'no-store' });
+  const path = require('path'), fs = require('fs');
+  const file = [path.join(__dirname, 'admin.html'), path.join(__dirname, 'public', 'admin.html')].find(f => fs.existsSync(f));
+  if (!file) return res.status(404).type('text').send('admin.html not found — put it next to server.js');
+  res.sendFile(file);
 });
 
 /* ---------- status ---------- */
