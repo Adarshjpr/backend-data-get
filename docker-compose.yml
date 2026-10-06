@@ -1,0 +1,19 @@
+services:
+  enroll-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: uncodemy-enroll-api
+
+    restart: unless-stopped
+
+    ports:
+      - "127.0.0.1:3005:3000"
+
+    env_file:
+      - .env
+
+    environment:
+      NODE_ENV: production
+      PORT: 3000
