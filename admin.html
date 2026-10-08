@@ -4,211 +4,507 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="robots" content="noindex, nofollow" />
-<title>Enrollments Admin · Uncodemy</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<title>Payments · Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <style>
-:root{--blue:#2563EB;--blue-l:#EAF1FF;--navy:#0F2A5C;--navy-9:#0A1628;--or:#FF5421;--green:#16A34A;--text:#171717;--muted:#6B7280;--line:#E5E7EB;--bg:#F6F8FC}
-*{box-sizing:border-box}
-body{margin:0;font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;-webkit-font-smoothing:antialiased}
-button,input,select{font:inherit}
-.hide{display:none!important}
-/* login */
-.login{min-height:100vh;display:grid;place-items:center;padding:20px;background:linear-gradient(135deg,var(--navy),var(--navy-9))}
-.login form{width:100%;max-width:360px;background:#fff;border-radius:18px;padding:28px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5)}
-.logo{font-size:20px;font-weight:900;color:var(--navy-9)}.logo span{color:var(--or)}
-.login h1{font-size:18px;margin:14px 0 4px}.login p{color:var(--muted);margin:0 0 18px;font-size:13px}
-.login input{width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:10px;margin-bottom:12px}
-.login input:focus,.bar input:focus,.bar select:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 4px rgba(37,99,235,.12)}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;border-radius:10px;padding:10px 16px;font-weight:700;cursor:pointer;background:var(--blue);color:#fff}
-.btn.w{width:100%;padding:12px}
-.btn.ghost{background:#fff;color:var(--text);border:1px solid var(--line)}
-.btn.green{background:var(--green)}
-.err{color:#B91C1C;font-size:12.5px;font-weight:600;min-height:18px;margin-top:8px}
-/* app */
-header{background:var(--navy-9);color:#fff}
-header .in{max-width:1280px;margin:0 auto;padding:12px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px}
-header .logo{color:#fff}header small{color:#8fa4c0;font-weight:600;margin-left:8px}
-.wrap{max-width:1280px;margin:0 auto;padding:20px}
-.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px}
-.stat{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px}
-.stat small{display:block;color:var(--muted);font-weight:600;font-size:12px}
-.stat b{font-size:24px;font-weight:900}
-.stat:nth-child(1){border-top:3px solid var(--blue)}.stat:nth-child(2){border-top:3px solid var(--or)}.stat:nth-child(3){border-top:3px solid #8B5CF6}.stat:nth-child(4){border-top:3px solid #F59E0B}.stat:nth-child(5){border-top:3px solid var(--green)}
-@media(max-width:800px){.stats{grid-template-columns:repeat(2,1fr)}}
-.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:12px}
-.bar input,.bar select{padding:9px 12px;border:1.5px solid var(--line);border-radius:9px;background:#fff}
-.bar .s{flex:1 1 220px}
-.bar label{font-size:12px;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:6px}
-.bar .sp{flex:1}
-.tbl{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:auto}
-table{width:100%;border-collapse:collapse;min-width:900px}
-th,td{padding:11px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:middle}
-th{background:#F8FAFC;font-size:11.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);position:sticky;top:0}
-tr:hover td{background:#FAFBFF}
-td .nm{font-weight:700}
-td .sub{font-size:12px;color:var(--muted)}
-td a{color:var(--blue);font-weight:600}
-.wa{display:inline-block;margin-left:6px;font-size:11px;font-weight:800;color:#fff!important;background:#25D366;padding:2px 7px;border-radius:99px}
-.flag{font-size:10.5px;font-weight:800;color:#B45309;background:#FFFBEB;border:1px solid #FDE68A;padding:1px 6px;border-radius:99px;margin-left:4px}
-.badge{font-size:11px;font-weight:800;padding:2px 8px;border-radius:99px;background:var(--blue-l);color:var(--blue)}
-td select{padding:6px 8px;border-radius:8px;border:1.5px solid var(--line);font-weight:700;font-size:12.5px}
-td select.new{color:var(--blue);border-color:#C7D7FE;background:#EFF6FF}
-td select.contacted{color:#B45309;border-color:#FDE68A;background:#FFFBEB}
-td select.access_sent{color:#15803D;border-color:#BBF7D0;background:#F0FDF4}
-td select.not_interested{color:#6B7280;background:#F3F4F6}
-.empty{padding:40px;text-align:center;color:var(--muted);font-weight:600}
-.note{font-size:12px;color:var(--muted);margin-top:10px}
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--navy-9);color:#fff;padding:10px 16px;border-radius:10px;font-weight:600;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none}
-.toast.on{opacity:1}
+  :root {
+    --page: #eef1f4;
+    --surface: #ffffff;
+    --line: #d8dde4;
+    --ink: #17202e;
+    --muted: #5b6576;
+    --primary: #1d4e89;
+    --primary-soft: #e3ecf7;
+    --ok: #1e7b4f;
+    --ok-soft: #e2f3ea;
+    --bad: #b42318;
+    --bad-soft: #fbe7e5;
+    --wait: #8a5a00;
+    --wait-soft: #fbf0d9;
+    --wa: #128c4a;
+    --radius: 10px;
+    font-family: "Public Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --page: #121821; --surface: #1a2230; --line: #2c3748; --ink: #e8edf4; --muted: #9aa6b8;
+      --primary: #7fb0ea; --primary-soft: #1f3350; --ok: #5cc794; --ok-soft: #173427;
+      --bad: #f08a80; --bad-soft: #3a1f1d; --wait: #e5b54f; --wait-soft: #3a2f16; --wa: #5cc794;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font-size: 15px; line-height: 1.5; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  button:disabled { cursor: default; opacity: .55; }
+  :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  .hidden { display: none !important; }
+
+  /* ---------- Login ---------- */
+  .login-wrap { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+  .login { width: 100%; max-width: 380px; background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 32px; }
+  .login h1 { font-size: 22px; margin: 0 0 4px; }
+  .login p { margin: 0 0 24px; color: var(--muted); }
+  label { display: block; font-weight: 600; font-size: 14px; margin: 16px 0 6px; }
+  input[type=password], input[type=search], textarea {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface);
+  }
+  .btn { border: 1px solid transparent; border-radius: 8px; padding: 10px 16px; font-weight: 600;
+    text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+  .btn-primary { background: var(--primary); color: #fff; width: 100%; margin-top: 24px; justify-content: center; }
+  .btn-ghost { background: transparent; border-color: var(--line); color: var(--ink); }
+  .error { color: var(--bad); font-size: 14px; margin-top: 12px; min-height: 20px; }
+  @media (prefers-color-scheme: dark) { .btn-primary { color: #0f1620; } }
+
+  /* ---------- Top bar ---------- */
+  header { background: var(--surface); border-bottom: 1px solid var(--line); }
+  .bar { max-width: 1400px; margin: 0 auto; padding: 12px 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .bar h1 { font-size: 18px; margin: 0; flex: 1; min-width: 200px; }
+  .bar h1 small { color: var(--muted); font-weight: 500; font-size: 14px; margin-left: 6px; }
+
+  /* ---------- KPIs ---------- */
+  .kpis { max-width: 1400px; margin: 0 auto; padding: 20px 20px 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .kpi { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+  .kpi small { display: block; color: var(--muted); font-size: 13px; font-weight: 500; }
+  .kpi b { font-size: 26px; font-weight: 700; }
+  .kpi.ok b { color: var(--ok); }
+  .kpi.wait b { color: var(--wait); }
+
+  /* ---------- Layout ---------- */
+  main { max-width: 1400px; margin: 0 auto; padding: 20px; display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 20px; align-items: start; }
+
+  .tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 12px; }
+  .tab { background: transparent; border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; font-weight: 500; }
+  .tab b { font-weight: 700; margin-left: 4px; }
+  .tab[aria-pressed=true] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+  .search { margin-bottom: 12px; }
+
+  .list { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  .row { display: grid; grid-template-columns: 44px 1fr auto; gap: 12px; align-items: center; width: 100%;
+    padding: 12px 14px; border: 0; border-bottom: 1px solid var(--line); background: transparent; text-align: left; }
+  .row:last-child { border-bottom: 0; }
+  .row:hover { background: var(--page); }
+  .row[aria-current=true] { background: var(--primary-soft); }
+  .avatar { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font-weight: 700;
+    background: var(--primary-soft); color: var(--primary); font-size: 15px; }
+  .row .name { font-weight: 600; }
+  .row .sub { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+  .row time { color: var(--muted); font-size: 12px; display: block; text-align: right; margin-top: 4px; white-space: nowrap; }
+  .row .right { text-align: right; }
+
+  .pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .pill.Paid { background: var(--ok-soft); color: var(--ok); }
+  .pill.NotPaid { background: var(--wait-soft); color: var(--wait); }
+  .pill.Free { background: var(--page); color: var(--muted); border: 1px solid var(--line); }
+  .pill.st { background: var(--primary-soft); color: var(--primary); }
+
+  .pager { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; color: var(--muted); font-size: 14px; gap: 8px; }
+  .empty { padding: 48px 20px; text-align: center; color: var(--muted); }
+
+  /* ---------- Detail ---------- */
+  .detail { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+    position: sticky; top: 20px; max-height: calc(100vh - 40px); overflow: auto; }
+  .detail-head { padding: 18px 20px; border-bottom: 1px solid var(--line); display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .detail-head h2 { margin: 0; font-size: 20px; flex: 1; min-width: 160px; }
+  .close { display: none; }
+  .amount { padding: 18px 20px; border-bottom: 1px solid var(--line); display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .amount b { font-size: 28px; }
+  .amount.paid b { color: var(--ok); }
+  .amount.unpaid b { color: var(--wait); }
+  .amount span { color: var(--muted); font-size: 14px; }
+  .contact { display: flex; gap: 8px; padding: 14px 20px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .btn-wa { background: var(--wa); color: #fff; }
+  @media (prefers-color-scheme: dark) { .btn-wa { color: #0f1620; } }
+  .section-title { padding: 14px 20px 0; font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+  .actions { display: flex; gap: 8px; padding: 10px 20px 14px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .actions .btn[aria-pressed=true] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+  .info { margin: 14px 20px; padding: 12px 14px; border-radius: 8px; background: var(--wait-soft); color: var(--wait); font-size: 14px; font-weight: 500; }
+  .note { padding: 0 20px 14px; border-bottom: 1px solid var(--line); }
+  .note .btn { margin-top: 8px; }
+  dl { margin: 0; padding: 8px 20px 20px; display: grid; grid-template-columns: minmax(130px, 36%) 1fr; }
+  dt, dd { padding: 10px 0; border-bottom: 1px solid var(--line); margin: 0; }
+  dt { color: var(--muted); font-size: 14px; padding-right: 12px; }
+  dd { white-space: pre-wrap; word-break: break-word; }
+  dd.mono { font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+  .placeholder { padding: 80px 24px; text-align: center; color: var(--muted); }
+
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--surface);
+    padding: 10px 18px; border-radius: 8px; font-weight: 500; z-index: 50; }
+
+  @media (max-width: 900px) {
+    .kpis { grid-template-columns: repeat(2, 1fr); padding: 16px 16px 0; }
+    main { grid-template-columns: 1fr; padding: 16px; }
+    .bar { padding: 12px 16px; }
+    .detail { position: fixed; inset: 0; max-height: none; border-radius: 0; z-index: 40; }
+    .detail.idle { display: none; }
+    .close { display: inline-flex; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .row { transition: background .12s; }
+  }
 </style>
 </head>
 <body>
 
-<!-- LOGIN -->
-<div class="login" id="loginView">
-  <form id="loginForm" autocomplete="off">
-    <div class="logo">Un<span>codemy</span></div>
-    <h1>Enrollments admin</h1>
-    <p>Enter the admin key (ADMIN_KEY from the backend .env).</p>
-    <input id="keyInput" type="password" placeholder="Admin key" required>
-    <button class="btn w" type="submit">Open dashboard</button>
-    <div class="err" id="loginErr"></div>
+<!-- ============ LOGIN ============ -->
+<div id="loginView" class="login-wrap hidden">
+  <form class="login" id="loginForm" novalidate>
+    <h1>Admin login</h1>
+    <p>Playwright course · payments. Server ki <b>.env</b> wali <b>ADMIN_KEY</b> daalein.</p>
+    <label for="adminKey">Admin key</label>
+    <input id="adminKey" type="password" autocomplete="current-password" required />
+    <button class="btn btn-primary" type="submit" id="loginBtn">Log in</button>
+    <div class="error" id="loginError" role="alert"></div>
   </form>
 </div>
 
-<!-- DASHBOARD -->
-<div id="appView" class="hide">
-  <header><div class="in">
-    <div><span class="logo">Un<span>codemy</span></span><small>Free Playwright course · enrollments</small></div>
-    <div style="display:flex;gap:8px"><a class="btn ghost" href="https://uncodemy.com/recorded/course/playwright-testing/" target="_blank" rel="noopener">Course page ↗</a><button class="btn ghost" id="logoutBtn" type="button">Log out</button></div>
-  </div></header>
-
-  <div class="wrap">
-    <div class="stats">
-      <div class="stat"><small>Total enrolled</small><b id="sTotal">0</b></div>
-      <div class="stat"><small>Today</small><b id="sToday">0</b></div>
-      <div class="stat"><small>Last 7 days</small><b id="sWeek">0</b></div>
-      <div class="stat"><small>Access sent</small><b id="sSent">0</b></div>
-      <div class="stat"><small>Called</small><b id="sContacted">0</b></div>
-    </div>
-
+<!-- ============ DASHBOARD ============ -->
+<div id="appView" class="hidden">
+  <header>
     <div class="bar">
-      <input class="s" id="fSearch" type="search" placeholder="Search name, email or phone">
-      <select id="fStatus">
-        <option value="">All status</option><option value="new">New</option><option value="access_sent">Access sent</option><option value="contacted">Called</option><option value="not_interested">Not interested</option>
-      </select>
-      <label>From <input id="fFrom" type="date"></label>
-      <label>To <input id="fTo" type="date"></label>
-      <span class="sp"></span>
-      <button class="btn ghost" id="refreshBtn" type="button">↻ Refresh</button>
-      <button class="btn green" id="csvBtn" type="button">⬇ Export CSV</button>
+      <h1>Payments <small>Playwright course</small></h1>
+      <button class="btn btn-ghost" id="refreshBtn" type="button">↻ Refresh</button>
+      <button class="btn btn-ghost" id="csvBtn" type="button">⬇ Export CSV</button>
+      <button class="btn btn-ghost" id="logoutBtn" type="button">Log out</button>
     </div>
+  </header>
 
-    <div class="tbl">
-      <table>
-        <thead><tr><th>Date</th><th>Name</th><th>Phone</th><th>Email</th><th>Course</th><th>Sign-ups</th><th>Source</th><th>Status</th></tr></thead>
-        <tbody id="rows"><tr><td colspan="8" class="empty">Loading…</td></tr></tbody>
-      </table>
-    </div>
-    <p class="note">Someone is added here when they submit the free enrollment form. "Sign-ups" counts repeat submissions with the same email. Call them, mark <b>Called</b>, then send the course details by email within 24 hours and mark <b>Access sent</b>.</p>
+  <div class="kpis">
+    <div class="kpi ok"><small>Paid students</small><b id="kPaid">0</b></div>
+    <div class="kpi ok"><small>Total collected</small><b id="kRev">₹0</b></div>
+    <div class="kpi wait"><small>Form bhara, pay nahi kiya</small><b id="kPending">0</b></div>
+    <div class="kpi"><small>Paid today</small><b id="kToday">0</b></div>
   </div>
+
+  <main>
+    <section aria-label="Payment list">
+      <div class="tabs" role="group" aria-label="Filter by payment">
+        <button class="tab" data-tab="paid" aria-pressed="true" type="button">Paid<b id="cPaid">0</b></button>
+        <button class="tab" data-tab="pending" aria-pressed="false" type="button">Not paid<b id="cPending">0</b></button>
+        <button class="tab" data-tab="" aria-pressed="false" type="button">All enrolled<b id="cAll">0</b></button>
+      </div>
+      <input class="search" id="search" type="search" placeholder="Search by name, email, mobile or payment ID" aria-label="Search" />
+      <div class="list" id="list"></div>
+      <div class="pager">
+        <button class="btn btn-ghost" id="prevBtn" type="button">Previous</button>
+        <span id="pageInfo"></span>
+        <button class="btn btn-ghost" id="nextBtn" type="button">Next</button>
+      </div>
+    </section>
+
+    <section class="detail idle" id="detail" aria-live="polite">
+      <div class="placeholder">Kisi student par click karein — payment aur details yahan dikhengi.</div>
+    </section>
+  </main>
 </div>
-<div class="toast" id="toast"></div>
+
+<div class="toast hidden" id="toast" role="status"></div>
 
 <script>
-/* admin.html is served by the backend itself (http://IP:PORT/admin), so the API is on the same address */
-var API_BASE = '';
-(function () {
-  var KEY_NAME = 'uc_admin_key', items = [], timer;
-  var $ = function (id) { return document.getElementById(id); };
-  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
-  function key() { try { return sessionStorage.getItem(KEY_NAME) || ''; } catch (e) { return window.__k || ''; } }
-  function setKey(k) { try { k ? sessionStorage.setItem(KEY_NAME, k) : sessionStorage.removeItem(KEY_NAME); } catch (e) { window.__k = k; } }
-  function toast(t) { var el = $('toast'); el.textContent = t; el.classList.add('on'); setTimeout(function () { el.classList.remove('on'); }, 1800); }
-  function fmt(d) { return new Date(d).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }); }
+/* admin.html isi backend se serve hota hai (http://SERVER/admin), isliye API same address par hai */
+const API = "";
+const KEY_NAME = "uc_admin_key";
+const PER_PAGE = 20;
+const state = { tab: "paid", search: "", page: 1, items: [], selectedKey: null };
 
-  function api(path, opts) {
-    opts = opts || {};
-    opts.headers = Object.assign({ 'x-admin-key': key(), 'Content-Type': 'application/json' }, opts.headers || {});
-    return fetch(API_BASE + path, opts).then(function (r) {
-      if (r.status === 401) { logout('Wrong admin key.'); throw new Error('401'); }
-      return r.json();
-    });
+const $ = (id) => document.getElementById(id);
+const el = (tag, props = {}, ...children) => {
+  const n = document.createElement(tag);
+  Object.assign(n, props);
+  for (const c of children) if (c != null) n.append(c);
+  return n;
+};
+
+const fmtDate = (d) => d ? new Date(d).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+const inr = (n) => "₹" + Number(n || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 });
+const itemKey = (it) => (it.pending ? "p_" : "l_") + it._id;
+const initials = (name) => String(name || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+const STATUS = [["new", "New"], ["contacted", "Called"], ["access_sent", "Access sent"], ["not_interested", "Not interested"]];
+const statusLabel = (s) => (STATUS.find((x) => x[0] === s) || [0, "New"])[1];
+
+function payPill(it) {
+  if (it.pending) return el("span", { className: "pill NotPaid", textContent: "Not paid" });
+  if (it.paid) return el("span", { className: "pill Paid", textContent: inr((it.amount || 0) / 100) + " paid" });
+  return el("span", { className: "pill Free", textContent: "Free" });
+}
+
+let toastTimer;
+function toast(msg) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.classList.remove("hidden");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.add("hidden"), 2500);
+}
+
+function getKey() { try { return sessionStorage.getItem(KEY_NAME) || window.__k || ""; } catch { return window.__k || ""; } }
+function setKey(k) { window.__k = k || ""; try { k ? sessionStorage.setItem(KEY_NAME, k) : sessionStorage.removeItem(KEY_NAME); } catch {} }
+
+async function api(path, options = {}) {
+  const res = await fetch(API + path, {
+    ...options,
+    headers: { "Content-Type": "application/json", "x-admin-key": getKey(), ...(options.headers || {}) },
+  });
+  const body = await res.json().catch(() => ({}));
+  if (res.status === 401) { logout("Galat admin key. Dobara try karein."); throw new Error("Unauthorized"); }
+  if (!res.ok || body.ok === false) throw new Error(body.error || "Request failed");
+  return body;
+}
+
+/* ---------- Auth ---------- */
+function showLogin(msg) {
+  $("appView").classList.add("hidden");
+  $("loginView").classList.remove("hidden");
+  $("loginError").textContent = msg || "";
+  $("adminKey").focus();
+}
+function showApp() { $("loginView").classList.add("hidden"); $("appView").classList.remove("hidden"); }
+function logout(msg) { setKey(""); state.items = []; state.selectedKey = null; showLogin(msg); }
+
+$("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  $("loginError").textContent = "";
+  const k = $("adminKey").value.trim();
+  if (!k) { $("loginError").textContent = "Admin key daalein."; return; }
+  $("loginBtn").disabled = true;
+  setKey(k);
+  try {
+    await loadList();
+    $("adminKey").value = "";
+    showApp();
+  } catch (err) {
+    if (err.message !== "Unauthorized") $("loginError").textContent = "Server se connect nahi ho paaya. Backend chal raha hai?";
+  } finally {
+    $("loginBtn").disabled = false;
+  }
+});
+$("logoutBtn").addEventListener("click", () => logout(""));
+
+/* ---------- List ---------- */
+async function loadList(keepPage) {
+  const q = new URLSearchParams({ limit: 2000 });
+  if (state.tab) q.set("pay", state.tab);
+  if (state.search) q.set("search", state.search);
+
+  if (!state.items.length) $("list").replaceChildren(el("div", { className: "empty", textContent: "Loading…" }));
+  const data = await api("/api/admin/leads?" + q);
+  const s = data.stats;
+  $("cPaid").textContent = s.paid; $("cPending").textContent = s.pending || 0; $("cAll").textContent = s.total;
+  $("kPaid").textContent = s.paid; $("kRev").textContent = inr(s.revenue);
+  $("kPending").textContent = s.pending || 0; $("kToday").textContent = s.today;
+
+  state.items = data.items || [];
+  if (!keepPage) state.page = 1;
+  renderList();
+  return data;
+}
+
+function renderList() {
+  const total = state.items.length;
+  const pages = Math.max(1, Math.ceil(total / PER_PAGE));
+  if (state.page > pages) state.page = pages;
+  $("pageInfo").textContent = `Page ${state.page} of ${pages} · ${total} students`;
+  $("prevBtn").disabled = state.page <= 1;
+  $("nextBtn").disabled = state.page >= pages;
+
+  if (!total) {
+    const msg = state.search ? "Is search se koi student nahi mila."
+      : state.tab === "paid" ? "Abhi tak kisi ne payment nahi kiya."
+      : state.tab === "pending" ? "Koi pending payment nahi hai."
+      : "Abhi koi enrollment nahi hai.";
+    $("list").replaceChildren(el("div", { className: "empty", textContent: msg }));
+    return;
+  }
+  const slice = state.items.slice((state.page - 1) * PER_PAGE, state.page * PER_PAGE);
+  $("list").replaceChildren(...slice.map(renderRow));
+}
+
+function renderRow(it) {
+  const when = it.paid && it.paidAt ? it.paidAt : it.createdAt;
+  const btn = el("button", { className: "row", type: "button" },
+    el("div", { className: "avatar", textContent: initials(it.name), ariaHidden: "true" }),
+    el("div", {},
+      el("div", { className: "name", textContent: it.name }),
+      el("div", { className: "sub", textContent: `${it.email} · ${it.phone}` })
+    ),
+    el("div", { className: "right" },
+      payPill(it),
+      el("time", { textContent: fmtDate(when) })
+    )
+  );
+  const k = itemKey(it);
+  btn.dataset.key = k;
+  if (k === state.selectedKey) btn.setAttribute("aria-current", "true");
+  btn.addEventListener("click", () => openDetail(k));
+  return btn;
+}
+
+document.querySelectorAll(".tab").forEach((t) => t.addEventListener("click", () => {
+  document.querySelectorAll(".tab").forEach((x) => x.setAttribute("aria-pressed", "false"));
+  t.setAttribute("aria-pressed", "true");
+  state.tab = t.dataset.tab;
+  state.items = [];
+  closeDetail();
+  loadList().catch((err) => toast(err.message));
+}));
+
+let searchTimer;
+$("search").addEventListener("input", (e) => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => { state.search = e.target.value.trim(); loadList().catch((err) => toast(err.message)); }, 350);
+});
+$("prevBtn").addEventListener("click", () => { if (state.page > 1) { state.page--; renderList(); } });
+$("nextBtn").addEventListener("click", () => { state.page++; renderList(); });
+$("refreshBtn").addEventListener("click", async () => {
+  try { await loadList(true); if (state.selectedKey) openDetail(state.selectedKey); toast("Refreshed"); } catch (err) { toast(err.message); }
+});
+
+/* ---------- Detail ---------- */
+function openDetail(key) {
+  const it = state.items.find((x) => itemKey(x) === key);
+  if (!it) return closeDetail();
+  state.selectedKey = key;
+  document.querySelectorAll(".row").forEach((r) => r.toggleAttribute("aria-current", r.dataset.key === key));
+  const d = $("detail");
+  d.classList.remove("idle");
+  renderDetail(it);
+}
+
+function closeDetail() {
+  state.selectedKey = null;
+  const d = $("detail");
+  d.classList.add("idle");
+  d.replaceChildren(el("div", { className: "placeholder", textContent: "Kisi student par click karein — payment aur details yahan dikhengi." }));
+  document.querySelectorAll(".row").forEach((r) => r.removeAttribute("aria-current"));
+}
+
+function renderDetail(it) {
+  const closeBtn = el("button", { className: "btn btn-ghost close", type: "button", textContent: "← Back" });
+  closeBtn.addEventListener("click", closeDetail);
+
+  const head = el("div", { className: "detail-head" },
+    el("h2", { textContent: it.name }),
+    payPill(it),
+    it.pending ? null : el("span", { className: "pill st", textContent: statusLabel(it.status) }),
+    closeBtn
+  );
+
+  // amount block
+  let amount;
+  if (it.paid) {
+    amount = el("div", { className: "amount paid" }, el("b", { textContent: inr((it.amount || 0) / 100) }),
+      el("span", { textContent: "paid on " + fmtDate(it.paidAt) }));
+  } else if (it.pending) {
+    amount = el("div", { className: "amount unpaid" }, el("b", { textContent: inr((it.amount || 0) / 100) }),
+      el("span", { textContent: "payment pending · form " + fmtDate(it.createdAt) }));
+  } else {
+    amount = el("div", { className: "amount" }, el("b", { textContent: "Free" }), el("span", { textContent: "old free sign-up" }));
   }
 
-  function load() {
-    var p = new URLSearchParams();
-    if ($('fSearch').value.trim()) p.set('search', $('fSearch').value.trim());
-    if ($('fStatus').value) p.set('status', $('fStatus').value);
-    if ($('fFrom').value) p.set('from', $('fFrom').value);
-    if ($('fTo').value) p.set('to', $('fTo').value);
-    p.set('limit', '2000');
-    return api('/api/admin/leads?' + p.toString()).then(function (d) {
-      if (!d.ok) throw new Error(d.error || 'Error');
-      items = d.items;
-      $('sTotal').textContent = d.stats.total; $('sToday').textContent = d.stats.today; $('sWeek').textContent = d.stats.week;
-      $('sContacted').textContent = d.stats.contacted; $('sSent').textContent = d.stats.accessSent;
-      render();
-    });
+  // quick contact
+  const contact = el("div", { className: "contact" },
+    el("a", { className: "btn btn-ghost", href: "tel:+91" + it.phone, textContent: "📞 Call" }),
+    el("a", { className: "btn btn-wa", href: "https://wa.me/91" + it.phone, target: "_blank", rel: "noopener", textContent: "WhatsApp" }),
+    el("a", { className: "btn btn-ghost", href: "mailto:" + it.email, textContent: "✉ Email" })
+  );
+
+  const parts = [head, amount, contact];
+
+  if (it.pending) {
+    parts.push(el("div", { className: "info", textContent:
+      "Is student ne form bhara aur payment page khola, lekin payment nahi kiya. Call ya WhatsApp karke payment complete karwayein — pay karte hi ye 'Paid' tab mein aa jayega." }));
+  } else {
+    // status buttons
+    const note = el("textarea", { id: "adminNote", rows: 2, maxLength: 300, placeholder: "Optional note, e.g. call kiya, kal access bhejna hai" });
+    note.value = it.note || "";
+    const actions = el("div", { className: "actions" });
+    for (const [val, label] of STATUS) {
+      const b = el("button", { className: "btn btn-ghost", type: "button", textContent: label });
+      b.setAttribute("aria-pressed", String((it.status || "new") === val));
+      b.addEventListener("click", () => update(it, { status: val, note: note.value }));
+      actions.append(b);
+    }
+    const saveNote = el("button", { className: "btn btn-ghost", type: "button", textContent: "Save note" });
+    saveNote.addEventListener("click", () => update(it, { note: note.value }));
+    parts.push(
+      el("div", { className: "section-title", textContent: "Status" }),
+      actions,
+      el("div", { className: "note" }, el("label", { htmlFor: "adminNote", textContent: "Admin note" }), note, saveNote)
+    );
   }
 
-  function render() {
-    if (!items.length) { $('rows').innerHTML = '<tr><td colspan="8" class="empty">No leads found.</td></tr>'; return; }
-    var opts = [['new', 'New'], ['access_sent', 'Access sent'], ['contacted', 'Called'], ['not_interested', 'Not interested']];
-    $('rows').innerHTML = items.map(function (l) {
-      var st = l.status || 'new', src = (l.utm && l.utm.source) ? l.utm.source + (l.utm.campaign ? ' / ' + l.utm.campaign : '') : 'direct';
-      return '<tr>' +
-        '<td><div>' + esc(fmt(l.createdAt)) + '</div>' + (l.lastSeenAt && l.lastSeenAt !== l.createdAt ? '<div class="sub">last: ' + esc(fmt(l.lastSeenAt)) + '</div>' : '') + '</td>' +
-        '<td><div class="nm">' + esc(l.name) + (l.suspect ? ' <span class="flag" title="Submitted within 1.5 s of page load — may be a bot">⚠ check</span>' : '') + '</div></td>' +
-        '<td><a href="tel:+91' + esc(l.phone) + '">' + esc(l.phone) + '</a><a class="wa" href="https://wa.me/91' + esc(l.phone) + '" target="_blank" rel="noopener">WA</a></td>' +
-        '<td><a href="mailto:' + esc(l.email) + '">' + esc(l.email) + '</a></td>' +
-        '<td><span class="badge">' + esc(l.course) + '</span></td>' +
-        '<td>' + esc(l.attempts || 1) + '</td>' +
-        '<td class="sub">' + esc(src) + '</td>' +
-        '<td><select class="' + esc(st) + '" data-id="' + esc(l._id) + '">' + opts.map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === st ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select></td>' +
-        '</tr>';
-    }).join('');
+  // details
+  const utm = it.utm || {};
+  const src = utm.source ? utm.source + (utm.medium ? " / " + utm.medium : "") + (utm.campaign ? " / " + utm.campaign : "") : "direct";
+  const FIELDS = [
+    ["Email", it.email],
+    ["Mobile number", it.phone ? "+91 " + it.phone : ""],
+    ["Course", it.course],
+    ["Amount", it.paid || it.pending ? inr((it.amount || 0) / 100) + " (no GST)" : "Free"],
+    ["Payment ID", it.paymentId, true],
+    ["Order ID", it.orderId, true],
+    ["Paid on", fmtDate(it.paidAt)],
+    ["Form submitted", fmtDate(it.createdAt)],
+    ["Tries", String(it.attempts || 1)],
+    ["Source", src],
+    ["Page", it.page],
+    ["Flag", it.suspect ? "⚠ Form 1.5 sec ke andar bhara — bot ho sakta hai, check karein" : ""],
+  ];
+  const dl = el("dl");
+  for (const [label, v, mono] of FIELDS) {
+    if (!v) continue;
+    dl.append(el("dt", { textContent: label }), el("dd", { textContent: v, className: mono ? "mono" : "" }));
   }
+  parts.push(dl);
 
-  $('rows').addEventListener('change', function (e) {
-    var s = e.target; if (s.tagName !== 'SELECT') return;
-    s.className = s.value;
-    api('/api/admin/leads/' + encodeURIComponent(s.dataset.id), { method: 'PATCH', body: JSON.stringify({ status: s.value }) })
-      .then(function (d) { if (d.ok) { toast('Status updated'); load(); } else toast(d.error || 'Failed'); })
-      .catch(function () {});
-  });
+  $("detail").replaceChildren(...parts);
+}
 
-  function csvCell(v) { v = String(v == null ? '' : v); if (/^[=+\-@]/.test(v)) v = "'" + v; return '"' + v.replace(/"/g, '""') + '"'; }
-  $('csvBtn').addEventListener('click', function () {
-    if (!items.length) return toast('Nothing to export');
-    var head = ['Created (IST)', 'Name', 'Phone', 'Email', 'Course', 'Clicks', 'Status', 'UTM source', 'UTM medium', 'UTM campaign', 'Page'];
-    var lines = [head.map(csvCell).join(',')].concat(items.map(function (l) {
-      var u = l.utm || {};
-      return [new Date(l.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }), l.name, l.phone, l.email, l.course, l.attempts || 1, l.status, u.source, u.medium, u.campaign, l.page].map(csvCell).join(',');
-    }));
-    var blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
-    var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-    a.download = 'playwright-enrollments-' + new Date().toISOString().slice(0, 10) + '.csv';
-    document.body.appendChild(a); a.click(); a.remove();
-  });
+async function update(it, body) {
+  try {
+    await api("/api/admin/leads/" + encodeURIComponent(it._id), { method: "PATCH", body: JSON.stringify(body) });
+    toast(body.status ? "Marked as " + statusLabel(body.status).toLowerCase() : "Note saved");
+    const key = itemKey(it);
+    await loadList(true);
+    openDetail(key);
+  } catch (err) { toast(err.message); }
+}
 
-  ['fStatus', 'fFrom', 'fTo'].forEach(function (id) { $(id).addEventListener('change', load); });
-  $('fSearch').addEventListener('input', function () { clearTimeout(timer); timer = setTimeout(load, 350); });
-  $('refreshBtn').addEventListener('click', function () { load().then(function () { toast('Refreshed'); }); });
+/* ---------- CSV ---------- */
+function csvCell(v) { v = String(v == null ? "" : v); if (/^[=+\-@]/.test(v)) v = "'" + v; return '"' + v.replace(/"/g, '""') + '"'; }
+$("csvBtn").addEventListener("click", () => {
+  if (!state.items.length) return toast("Export karne ke liye kuch nahi hai");
+  const ist = (d) => d ? new Date(d).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : "";
+  const head = ["Form (IST)", "Name", "Phone", "Email", "Course", "Payment", "Amount (INR)", "Payment ID", "Order ID", "Paid at (IST)", "Tries", "Status", "Note", "UTM source", "UTM medium", "UTM campaign", "Page"];
+  const lines = [head.map(csvCell).join(",")].concat(state.items.map((l) => {
+    const u = l.utm || {};
+    const pay = l.pending ? "Not paid" : l.paid ? "Paid" : "Free";
+    return [ist(l.createdAt), l.name, l.phone, l.email, l.course, pay, (l.paid || l.pending) ? (l.amount || 0) / 100 : 0,
+      l.paymentId, l.orderId, ist(l.paidAt), l.attempts || 1, l.pending ? "payment pending" : statusLabel(l.status), l.note,
+      u.source, u.medium, u.campaign, l.page].map(csvCell).join(",");
+  }));
+  const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+  const a = el("a", { href: URL.createObjectURL(blob), download: `playwright-${state.tab || "all"}-${new Date().toISOString().slice(0, 10)}.csv` });
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
 
-  function showApp() { $('loginView').classList.add('hide'); $('appView').classList.remove('hide'); }
-  function logout(msg) { setKey(''); $('appView').classList.add('hide'); $('loginView').classList.remove('hide'); $('loginErr').textContent = msg || ''; }
-  $('logoutBtn').addEventListener('click', function () { logout(''); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && state.selectedKey) closeDetail(); });
 
-  $('loginForm').addEventListener('submit', function (e) {
-    e.preventDefault(); $('loginErr').textContent = '';
-    setKey($('keyInput').value.trim());
-    load().then(function () { showApp(); $('keyInput').value = ''; }).catch(function (err) { if (err.message !== '401') $('loginErr').textContent = 'Could not reach the server. Is the backend running?'; });
-  });
+/* auto refresh har 1 minute (selected student khula rahega) */
+setInterval(async () => {
+  if (!getKey() || $("appView").classList.contains("hidden")) return;
+  try { await loadList(true); if (state.selectedKey) openDetail(state.selectedKey); } catch {}
+}, 60000);
 
-  if (key()) load().then(showApp).catch(function () {});
+/* ---------- Start ---------- */
+(async () => {
+  if (!getKey()) return showLogin();
+  try { await loadList(); showApp(); } catch (err) { if (err.message !== "Unauthorized") showLogin("Server se connect nahi ho paaya."); }
 })();
 </script>
 </body>
