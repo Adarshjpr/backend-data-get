@@ -11,7 +11,7 @@
  *
  * FREE mode (COURSE_FEE = 0): works exactly like before (form → saved → thank-you).
  *
- * Files:  server.js + admin.html (same folder)  ·  admin panel → http://YOUR-SERVER/admin
+ * Files:  server.js + admin.html (same folder)  ·  admin panel → https://api.uncodemy.com/playwright-admin
  * Run:  npm install express cors mongodb dotenv razorpay  →  fill .env  →  pm2 restart all
  */
 require('dotenv').config();
@@ -486,7 +486,7 @@ app.patch('/api/admin/leads/:id', requireAdmin, async (req, res) => {
 /* ---------- admin page (open http://YOUR-IP:PORT/admin) ----------
    admin.html file server.js ke bagal me (same folder) rakhni hai. */
 const ADMIN_FILE = path.join(__dirname, 'admin.html');
-app.get(['/admin', '/admin.html'], (req, res) => {
+app.get(['/admin', '/admin.html', '/playwright-admin'], (req, res) => {   // /playwright-admin = use this behind api.uncodemy.com
   res.set({ 'X-Robots-Tag': 'noindex, nofollow', 'Cache-Control': 'no-store' });
   res.sendFile(ADMIN_FILE, err => {
     if (err) res.status(500).type('text').send('admin.html not found next to server.js');
