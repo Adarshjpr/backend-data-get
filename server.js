@@ -1,18 +1,22 @@
 /**
- * Uncodemy — Playwright recorded course · BACKEND (API + Razorpay payment + admin)
+ * Uncodemy — Recorded courses · BACKEND (API + Razorpay payment + admin)  — MULTI-COURSE
  *
- * Flow (PAID mode, COURSE_FEE > 0 — default ₹499, no GST / no extra charges):
- *   course page form  →  GET /api/enroll?name&phone&email...   (same form as before, no frontend change)
- *   →  backend creates a Razorpay order for exactly ₹499 and opens /pay/<orderId>  (Razorpay checkout)
- *      (form details are saved immediately → admin shows them under "Form bhara, pay nahi kiya")
- *   →  user pays  →  POST /api/pay/verify (signature checked on the server)
- *   →  lead saved as PAID in MongoDB  →  shows in /admin under "Paid"  →  redirect to thank-you page
- *   (optional) Razorpay webhook /api/razorpay/webhook saves the lead even if the user closes the tab after paying.
+ * Ek hi backend se kitne bhi course chal sakte hain. Har course ka price / title / URL
+ * neeche COURSE_LIST me hai. Naya course = COURSE_LIST me ek entry + uska course page.
  *
- * FREE mode (COURSE_FEE = 0): works exactly like before (form → saved → thank-you).
+ * Flow (paid course):
+ *   course page form  →  GET /api/enroll?course=<id>&name&phone&email...
+ *   →  backend us course ke price ka Razorpay order banata hai → /pay/<orderId> (checkout)
+ *      (form details turant save → admin me "Form bhara, pay nahi kiya")
+ *   →  user pays  →  POST /api/pay/verify (signature server par check)
+ *   →  lead PAID save (MongoDB)  →  admin me "Paid"  →  thank-you page
+ *   (optional) webhook /api/razorpay/webhook — tab band ho jaye tab bhi payment save.
  *
- * Files:  server.js + admin.html (same folder)  ·  admin panel → https://api.uncodemy.com/playwright-admin
- * Run:  npm install express cors mongodb dotenv razorpay  →  fill .env  →  pm2 restart all
+ * Price HAMESHA server decide karta hai (course id se). Page par likha price sirf dikhane ke liye hai.
+ * Free course (fee 0): form → save → thank-you.
+ *
+ * Files:  server.js + admin.html (same folder)  ·  admin → https://api.uncodemy.com/playwright-admin
+ * Run:    npm install express cors mongodb dotenv razorpay  →  .env bharo  →  pm2 restart all
  */
 require('dotenv').config();
 const crypto = require('crypto');
@@ -27,30 +31,79 @@ const {
   ADMIN_KEY,
   PORT = 3000,
   ALLOWED_ORIGINS = '',
-  THANKYOU_URL = 'https://uncodemy.com/recorded/course/playwright-testing/thankyou',
-  COURSE_URL = 'https://uncodemy.com/recorded/course/playwright-testing/',
-  // ---- payment ----
-  COURSE_FEE = '499',                     // in rupees — final amount, NO GST added on top (0 = free)
-  COURSE_TITLE = 'Playwright Testing — Recorded Course',
   BRAND_NAME = 'Uncodemy',
   RAZORPAY_KEY_ID = '',
   RAZORPAY_KEY_SECRET = '',
   RAZORPAY_WEBHOOK_SECRET = '',           // optional but recommended
+  FEE_OVERRIDE = '',                      // TESTING ONLY: e.g. 1 → har course ₹1. Live se pehle hata do.
 } = process.env;
+
+/* ============================== COURSES ==============================
+   ★ Naya course add karna ho to bas yahan ek entry jodo:
+     id       → course page ke UC_COURSE_ID jaisa hi (lowercase, a-z 0-9 -)
+     fee      → rupees me final price (No GST upar se). 0 = free.
+                .env me FEE_<ID> likh kar badal sakte ho (e.g. FEE_SELENIUM_PLAYWRIGHT=5999)
+     url      → course page (error par user yahin wapas jata hai)
+     thankyou → payment ke baad yahan redirect
+   ==================================================================== */
+const SITE = 'https://uncodemy.com';
+const COURSE_LIST = [
+  {
+    id: 'playwright',
+    title: 'Playwright Testing — Recorded Course',
+    fee: 4999,
+    url: SITE + '/recorded/course/playwright-testing/',
+    thankyou: SITE + '/recorded/course/playwright-testing/thankyou',
+  },
+  {
+    id: 'selenium-playwright',
+    title: 'Selenium + Playwright Automation — Recorded Course',
+    fee: 5999,
+    url: SITE + '/recorded/course/selenium-playwright.html',
+    thankyou: SITE + '/recorded/course/selenium-playwright-thankyou.html',
+  },
+  {
+    id: 'excel',
+    title: 'MS Excel with 8 Projects — Recorded Course',
+    fee: 99,
+    url: SITE + '/recorded/course/excel.html',
+    thankyou: SITE + '/recorded/course/excel-thankyou.html',
+  },
+];
+const DEFAULT_COURSE = 'playwright';     // purane page/link jo course id nahi bhejte, unke liye
+const CURRENCY = 'INR';
 
 if (!MONGODB_URI) { console.error('✗ MONGODB_URI missing in .env'); process.exit(1); }
 if (!ADMIN_KEY || ADMIN_KEY.length < 12) { console.error('✗ ADMIN_KEY missing or shorter than 12 characters in .env'); process.exit(1); }
 
-const feeNum = Number(String(COURSE_FEE).trim() || 0);
-if (!Number.isFinite(feeNum) || feeNum < 0) { console.error('✗ COURSE_FEE must be a number in rupees (e.g. 499) or 0 for free'); process.exit(1); }
-const FEE_PAISE = Math.round(feeNum * 100);   // ₹499 → 49900 paise. Nothing (GST/fee) is added on top.
-const PAID = FEE_PAISE > 0;
-const CURRENCY = 'INR';
-if (PAID && FEE_PAISE < 100) { console.error('✗ COURSE_FEE must be at least ₹1 (Razorpay minimum)'); process.exit(1); }
-if (PAID && (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET)) { console.error('✗ COURSE_FEE is set but RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET are missing in .env'); process.exit(1); }
+/* build COURSES map: fee from .env (FEE_<ID>) → else COURSE_LIST default */
+const envFeeKey = id => 'FEE_' + id.toUpperCase().replace(/[^A-Z0-9]/g, '_');
+const COURSES = {};
+for (const c of COURSE_LIST) {
+  if (!/^[a-z0-9-]{2,60}$/.test(c.id)) { console.error(`✗ bad course id "${c.id}" (use a-z, 0-9, -)`); process.exit(1); }
+  let raw = process.env[envFeeKey(c.id)];
+  // backward compatible: old .env had COURSE_FEE for the Playwright course
+  if ((raw === undefined || raw === '') && c.id === 'playwright' && process.env.COURSE_FEE) {
+    raw = process.env.COURSE_FEE;
+    console.warn('⚠ COURSE_FEE is old — use FEE_PLAYWRIGHT in .env instead');
+  }
+  if (String(FEE_OVERRIDE).trim() !== '') raw = FEE_OVERRIDE;
+  const rs = (raw === undefined || String(raw).trim() === '') ? c.fee : Number(String(raw).trim());
+  if (!Number.isFinite(rs) || rs < 0) { console.error(`✗ fee for "${c.id}" must be a number in rupees (or 0 for free)`); process.exit(1); }
+  const feePaise = Math.round(rs * 100);
+  if (feePaise > 0 && feePaise < 100) { console.error(`✗ fee for "${c.id}" must be at least ₹1 (Razorpay minimum)`); process.exit(1); }
+  COURSES[c.id] = { ...c, feePaise, paid: feePaise > 0 };
+}
+if (!COURSES[DEFAULT_COURSE]) { console.error('✗ DEFAULT_COURSE not in COURSE_LIST'); process.exit(1); }
+const ANY_PAID = Object.values(COURSES).some(c => c.paid);
+if (ANY_PAID && (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET)) { console.error('✗ a paid course exists but RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET are missing in .env'); process.exit(1); }
+
+const getCourse = id => COURSES[String(id || '').trim().toLowerCase()] || null;
+const courseIdOf = id => String(id || '').trim().toLowerCase() || DEFAULT_COURSE;
+const publicCourse = c => ({ id: c.id, title: c.title, fee: c.feePaise / 100, paid: c.paid });
 
 let razorpay = null;
-if (PAID) {
+if (ANY_PAID) {
   const Razorpay = require('razorpay');
   razorpay = new Razorpay({ key_id: RAZORPAY_KEY_ID, key_secret: RAZORPAY_KEY_SECRET });
 }
@@ -80,9 +133,11 @@ async function connectDb() {
   payments = db.collection('payments');           // one doc per Razorpay order (created / paid)
   await leads.createIndex({ email: 1, course: 1 }, { unique: true });
   await leads.createIndex({ createdAt: -1 });
+  await leads.createIndex({ course: 1, paid: 1, paidAt: -1 });
   await payments.createIndex({ orderId: 1 }, { unique: true });
   await payments.createIndex({ createdAt: -1 });
   await payments.createIndex({ status: 1, createdAt: -1 });
+  await payments.createIndex({ 'form.course': 1, status: 1 });
   console.log('✓ MongoDB connected →', MONGODB_DB + '.leads');
 }
 
@@ -121,8 +176,9 @@ function readForm(b, req) {
   const name = clean(b.name, 80);
   const phone = clean(b.phone, 14).replace(/\D/g, '').slice(-10);
   const email = clean(b.email, 120).toLowerCase();
-  const course = clean(b.course, 80) || 'playwright';
+  const course = courseIdOf(clean(b.course, 80));
 
+  if (!COURSES[course]) return { error: 'This course is not available. Please refresh the page and try again.' };
   if (name.length < 2) return { error: 'Please enter your full name.' };
   if (!PHONE_RE.test(phone)) return { error: 'Please enter a valid 10-digit mobile number.' };
   if (!EMAIL_RE.test(email)) return { error: 'Please enter a valid email address.' };
@@ -166,12 +222,14 @@ async function writeLead(d, meta, payment) {
 }
 
 /* ---------- create a Razorpay order for a filled form ----------
-   The form data is stored in `payments` right away (status "created"),
-   so the admin can see people who filled the form but did not pay. */
+   Amount comes ONLY from the course config on the server.
+   The form data is stored in `payments` right away (status "created"). */
 async function createOrder(b, req, links) {
   const f = readForm(b, req);
   if (f.error) return { ok: false, error: f.error };
   const d = f.data;
+  const course = COURSES[d.course];
+  if (!course.paid) return { ok: false, error: 'This course is free.' };
 
   // already paid for this course with this email → don't charge again
   const already = await leads.findOne({ email: d.email, course: d.course, paid: true }, { projection: { _id: 1 } });
@@ -179,7 +237,7 @@ async function createOrder(b, req, links) {
 
   const receipt = ('rc_' + Date.now().toString(36) + crypto.randomBytes(4).toString('hex')).slice(0, 40);
   const order = await razorpay.orders.create({
-    amount: FEE_PAISE,               // exactly ₹499 — no GST / convenience fee added by our code
+    amount: course.feePaise,         // exact course price — no GST / convenience fee added by our code
     currency: CURRENCY,
     receipt,
     notes: { name: d.name, email: d.email, phone: d.phone, course: d.course },
@@ -187,10 +245,10 @@ async function createOrder(b, req, links) {
 
   await payments.insertOne({
     orderId: order.id, receipt, amount: order.amount, currency: order.currency,
-    status: 'created', form: d, meta: f.meta,
+    status: 'created', course: d.course, form: d, meta: f.meta,
     ty: links.ty, back: links.back, createdAt: new Date(),
   });
-  return { ok: true, orderId: order.id, amount: order.amount, currency: order.currency, form: d };
+  return { ok: true, orderId: order.id, amount: order.amount, currency: order.currency, form: d, course };
 }
 
 /* ---------- mark an order paid + save the lead ----------
@@ -217,7 +275,7 @@ async function finalizePayment(orderId, paymentId, via) {
     await payments.updateOne({ orderId }, { $set: { status: 'created' }, $unset: { paymentId: '', paidAt: '', via: '' } });
     throw err;
   }
-  console.log(`✓ PAID ${rupees(p.amount)} · ${p.form.email} · ${orderId} · ${paymentId} (${via})`);
+  console.log(`✓ PAID ${rupees(p.amount)} · ${p.form.course} · ${p.form.email} · ${orderId} · ${paymentId} (${via})`);
   return { ok: true, doc: p };
 }
 
@@ -231,10 +289,17 @@ function safeUrl(u) {
   } catch (e) { return null; }
 }
 
+/* thank-you + back links for a request (page-sent links first, else course defaults) */
+function linksFor(course, ty, back) {
+  const c = course || COURSES[DEFAULT_COURSE];
+  return { ty: safeUrl(ty) || new URL(c.thankyou), back: safeUrl(back) || new URL(c.url) };
+}
+
 /* ---------- people who filled the form but have NOT paid (yet) ----------
-   One row per email+course (latest attempt), hidden as soon as that email pays. */
+   One row per email+course (latest attempt), hidden as soon as that email pays for that course. */
 async function pendingRows(q) {
   const match = { status: 'created' };
+  if (q.course) match['form.course'] = q.course;
   if (q.search) {
     const rx = new RegExp(escRx(q.search), 'i');
     match.$or = [{ 'form.name': rx }, { 'form.email': rx }, { 'form.phone': rx }, { orderId: rx }];
@@ -266,27 +331,37 @@ async function pendingList(q, limit) {
   const rows = (await pendingRows(q)).slice(0, limit);
   return rows.map(r => {
     const d = r.doc, f = d.form || {};
+    const c = getCourse(f.course);
     return {
       _id: d._id, pending: true, paid: false,
-      name: f.name, phone: f.phone, email: f.email, course: f.course, utm: f.utm, page: f.page,
+      name: f.name, phone: f.phone, email: f.email, course: f.course, courseTitle: c ? c.title : f.course,
+      utm: f.utm, page: f.page,
       amount: d.amount, orderId: d.orderId, createdAt: d.createdAt, lastSeenAt: d.createdAt,
       attempts: r.tries, status: 'pending', suspect: !!(d.meta && d.meta.suspect),
     };
   });
 }
 
-async function pendingCount() {
-  return (await pendingRows({})).length;
+async function pendingCount(course) {
+  return (await pendingRows({ course })).length;
 }
 
-/* ---------- PUBLIC: price info for the course page (optional) ---------- */
+/* ---------- PUBLIC: price info (optional) ·  /api/config?course=excel ---------- */
 app.get('/api/config', (req, res) => {
-  res.json({ ok: true, paid: PAID, fee: FEE_PAISE / 100, currency: CURRENCY, gst: false, keyId: PAID ? RAZORPAY_KEY_ID : null });
+  const base = { ok: true, currency: CURRENCY, gst: false, keyId: ANY_PAID ? RAZORPAY_KEY_ID : null };
+  if (req.query.course) {
+    const c = getCourse(req.query.course);
+    if (!c) return res.status(404).json({ ok: false, error: 'Unknown course' });
+    return res.json({ ...base, ...publicCourse(c) });
+  }
+  res.json({ ...base, courses: Object.values(COURSES).map(publicCourse) });
 });
 
-/* ---------- PUBLIC: free enrollment via JSON (only when the course is free) ---------- */
+/* ---------- PUBLIC: free enrollment via JSON (only for free courses) ---------- */
 app.post('/api/leads', rateLimit(20, 10 * 60 * 1000), async (req, res) => {
-  if (PAID) return res.status(402).json({ ok: false, error: 'This course is paid. Use /api/pay/order to pay first.' });
+  const c = getCourse(courseIdOf(req.body && req.body.course));
+  if (!c) return res.status(400).json({ ok: false, error: 'Unknown course' });
+  if (c.paid) return res.status(402).json({ ok: false, error: 'This course is paid. Use /api/pay/order to pay first.' });
   try {
     const f = readForm(req.body || {}, req);
     if (f.error) return res.status(400).json({ ok: false, error: f.error });
@@ -297,25 +372,27 @@ app.post('/api/leads', rateLimit(20, 10 * 60 * 1000), async (req, res) => {
   }
 });
 
-/* ---------- PUBLIC: enrollment via redirect (the course page form already uses this) ----------
-   FREE → save → redirect to thank-you.
-   PAID → create Razorpay order → redirect to /pay/<orderId> (checkout) → after payment → thank-you. */
+/* ---------- PUBLIC: enrollment via redirect (all course pages use this) ----------
+   FREE course → save → thank-you.
+   PAID course → Razorpay order → /pay/<orderId> (checkout) → after payment → thank-you. */
 app.get('/api/enroll', rateLimit(20, 10 * 60 * 1000), async (req, res) => {
-  const ty = safeUrl(req.query.ty) || new URL(THANKYOU_URL);
-  const back = safeUrl(req.query.back) || new URL(COURSE_URL);
+  const q = req.query || {};
+  const course = getCourse(courseIdOf(q.course));
+  const { ty, back } = linksFor(course, q.ty, q.back);
   const sendBack = (msg) => {
     back.searchParams.set('enroll_error', msg);
     back.hash = 'enroll';
     res.redirect(303, back.toString());
   };
   try {
-    if (!PAID) {
-      const f = readForm(req.query || {}, req);
+    if (!course) return sendBack('This course is not available. Please refresh the page and try again.');
+    if (!course.paid) {
+      const f = readForm(q, req);
       if (f.error) return sendBack(f.error);
       await writeLead(f.data, f.meta);
       return res.redirect(303, ty.toString());
     }
-    const out = await createOrder(req.query || {}, req, { ty: ty.toString(), back: back.toString() });
+    const out = await createOrder(q, req, { ty: ty.toString(), back: back.toString() });
     if (!out.ok) return sendBack(out.error);
     if (out.alreadyPaid) return res.redirect(303, ty.toString());
     res.redirect(303, '/pay/' + out.orderId);
@@ -328,37 +405,41 @@ app.get('/api/enroll', rateLimit(20, 10 * 60 * 1000), async (req, res) => {
 /* ---------- PUBLIC: checkout page served by this backend ---------- */
 app.get('/pay/:orderId', async (req, res) => {
   res.set({ 'X-Robots-Tag': 'noindex, nofollow', 'Cache-Control': 'no-store' });
-  if (!PAID || !ORDER_RE.test(req.params.orderId)) return res.redirect(303, COURSE_URL);
+  const home = COURSES[DEFAULT_COURSE].url;
+  if (!ANY_PAID || !ORDER_RE.test(req.params.orderId)) return res.redirect(303, home);
   try {
     const p = await payments.findOne({ orderId: req.params.orderId });
-    if (!p) return res.redirect(303, COURSE_URL);
-    if (p.status === 'paid') return res.redirect(303, p.ty || THANKYOU_URL);
+    if (!p) return res.redirect(303, home);
+    const c = getCourse(p.form && p.form.course) || COURSES[DEFAULT_COURSE];
+    if (p.status === 'paid') return res.redirect(303, p.ty || c.thankyou);
     const data = {
       key: RAZORPAY_KEY_ID, orderId: p.orderId, amount: p.amount, currency: p.currency,
-      price: rupees(p.amount), brand: BRAND_NAME, title: COURSE_TITLE,
+      price: rupees(p.amount), brand: BRAND_NAME, title: c.title,
       prefill: { name: p.form.name, email: p.form.email, contact: '+91' + p.form.phone },
-      back: p.back || COURSE_URL,
+      back: p.back || c.url,
     };
     const json = JSON.stringify(data).replace(/</g, '\\u003c');
     res.type('html').send(PAY_HTML.replace('__PAY_DATA__', () => json));
   } catch (err) {
     console.error('GET /pay', err);
-    res.redirect(303, COURSE_URL);
+    res.redirect(303, home);
   }
 });
 
-/* ---------- PUBLIC: create order via JSON (use this if the course page calls the API with fetch over https) ---------- */
+/* ---------- PUBLIC: create order via JSON (if a page calls the API with fetch) ---------- */
 app.post('/api/pay/order', rateLimit(20, 10 * 60 * 1000), async (req, res) => {
-  if (!PAID) return res.status(400).json({ ok: false, error: 'This course is free.' });
+  const b = req.body || {};
+  const course = getCourse(courseIdOf(b.course));
+  if (!course) return res.status(400).json({ ok: false, error: 'Unknown course' });
+  if (!course.paid) return res.status(400).json({ ok: false, error: 'This course is free.' });
   try {
-    const ty = safeUrl(req.body && req.body.ty) || new URL(THANKYOU_URL);
-    const back = safeUrl(req.body && req.body.back) || new URL(COURSE_URL);
-    const out = await createOrder(req.body || {}, req, { ty: ty.toString(), back: back.toString() });
+    const { ty, back } = linksFor(course, b.ty, b.back);
+    const out = await createOrder(b, req, { ty: ty.toString(), back: back.toString() });
     if (!out.ok) return res.status(400).json(out);
     if (out.alreadyPaid) return res.json({ ok: true, alreadyPaid: true, redirect: ty.toString() });
     res.json({
       ok: true, key: RAZORPAY_KEY_ID, orderId: out.orderId, amount: out.amount, currency: out.currency,
-      name: BRAND_NAME, description: COURSE_TITLE,
+      name: BRAND_NAME, description: out.course.title,
       prefill: { name: out.form.name, email: out.form.email, contact: '+91' + out.form.phone },
     });
   } catch (err) {
@@ -369,7 +450,7 @@ app.post('/api/pay/order', rateLimit(20, 10 * 60 * 1000), async (req, res) => {
 
 /* ---------- PUBLIC: verify payment after Razorpay checkout succeeds ---------- */
 app.post('/api/pay/verify', rateLimit(30, 10 * 60 * 1000), async (req, res) => {
-  if (!PAID) return res.status(400).json({ ok: false, error: 'This course is free.' });
+  if (!ANY_PAID) return res.status(400).json({ ok: false, error: 'No paid course configured.' });
   try {
     const b = req.body || {};
     const orderId = String(b.razorpay_order_id || ''), paymentId = String(b.razorpay_payment_id || ''), sig = String(b.razorpay_signature || '');
@@ -389,16 +470,17 @@ app.post('/api/pay/verify', rateLimit(30, 10 * 60 * 1000), async (req, res) => {
 
     const out = await finalizePayment(orderId, paymentId, 'checkout');
     if (!out.ok) return res.status(404).json(out);
-    res.json({ ok: true, redirect: out.doc.ty || THANKYOU_URL });
+    const c = getCourse(out.doc.form && out.doc.form.course) || COURSES[DEFAULT_COURSE];
+    res.json({ ok: true, redirect: out.doc.ty || c.thankyou });
   } catch (err) {
     console.error('POST /api/pay/verify', err);
     res.status(500).json({ ok: false, error: 'Server error' });
   }
 });
 
-/* ---------- Razorpay webhook (set in Dashboard → Webhooks, events: payment.captured + order.paid) ---------- */
+/* ---------- Razorpay webhook (Dashboard → Webhooks, events: payment.captured + order.paid) ---------- */
 app.post('/api/razorpay/webhook', async (req, res) => {
-  if (!PAID || !RAZORPAY_WEBHOOK_SECRET) return res.status(404).json({ ok: false });
+  if (!ANY_PAID || !RAZORPAY_WEBHOOK_SECRET) return res.status(404).json({ ok: false });
   if (!safeEqual(hmac(RAZORPAY_WEBHOOK_SECRET, req.rawBody || ''), req.get('x-razorpay-signature'))) {
     return res.status(400).json({ ok: false, error: 'Bad signature' });
   }
@@ -416,25 +498,30 @@ app.post('/api/razorpay/webhook', async (req, res) => {
 });
 
 /* ---------- ADMIN: list leads ----------
-   ?pay=paid     → only students who paid ₹499
-   ?pay=pending  → filled the form, opened payment, but did NOT pay
-   ?pay=free     → old free sign-ups
-   (empty)       → paid + free                                          */
+   ?course=excel  → sirf us course ke leads + stats (khaali = saare courses)
+   ?pay=paid      → only students who paid
+   ?pay=pending   → filled the form, opened payment, but did NOT pay
+   ?pay=free      → free sign-ups
+   (empty)        → paid + free
+   Response me `courses` list bhi aati hai (admin dropdown ke liye).            */
 app.get('/api/admin/leads', rateLimit(120, 10 * 60 * 1000), requireAdmin, async (req, res) => {
   try {
     const search = clean(req.query.search, 80);
     const limit = Math.min(parseInt(req.query.limit, 10) || 500, 5000);
     const from = /^\d{4}-\d{2}-\d{2}$/.test(req.query.from || '') ? req.query.from : '';
     const to = /^\d{4}-\d{2}-\d{2}$/.test(req.query.to || '') ? req.query.to : '';
+    const cSel = getCourse(req.query.course);
+    const course = cSel ? cSel.id : '';
+    const cq = course ? { course } : {};
 
     const startToday = new Date(new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' }) + 'T00:00:00+05:30');
     const start7 = new Date(startToday.getTime() - 6 * 864e5);
 
     let itemsPromise;
     if (req.query.pay === 'pending') {
-      itemsPromise = pendingList({ search, from, to }, limit);
+      itemsPromise = pendingList({ search, from, to, course }, limit);
     } else {
-      const q = {};
+      const q = { ...cq };
       if (search) {
         const rx = new RegExp(escRx(search), 'i');
         q.$or = [{ name: rx }, { email: rx }, { phone: rx }, { paymentId: rx }];
@@ -447,21 +534,30 @@ app.get('/api/admin/leads', rateLimit(120, 10 * 60 * 1000), requireAdmin, async 
         if (from) q.createdAt.$gte = new Date(from + 'T00:00:00+05:30');
         if (to) q.createdAt.$lte = new Date(to + 'T23:59:59+05:30');
       }
-      itemsPromise = leads.find(q).sort({ paidAt: -1, createdAt: -1 }).limit(limit).project({ ip: 0, userAgent: 0 }).toArray();
+      itemsPromise = leads.find(q).sort({ paidAt: -1, createdAt: -1 }).limit(limit).project({ ip: 0, userAgent: 0 }).toArray()
+        .then(rows => rows.map(r => { const c = getCourse(r.course); return { ...r, courseTitle: c ? c.title : r.course }; }));
     }
 
-    const [items, total, today, week, contacted, accessSent, rev, pending] = await Promise.all([
+    const [items, total, today, week, contacted, accessSent, rev, pending, byCourse] = await Promise.all([
       itemsPromise,
-      leads.countDocuments({}),
-      leads.countDocuments({ paid: true, paidAt: { $gte: startToday } }),
-      leads.countDocuments({ paid: true, paidAt: { $gte: start7 } }),
-      leads.countDocuments({ status: 'contacted' }),
-      leads.countDocuments({ status: 'access_sent' }),
-      leads.aggregate([{ $match: { paid: true } }, { $group: { _id: null, n: { $sum: 1 }, sum: { $sum: '$amount' } } }]).toArray(),
-      PAID ? pendingCount() : Promise.resolve(0),
+      leads.countDocuments(cq),
+      leads.countDocuments({ ...cq, paid: true, paidAt: { $gte: startToday } }),
+      leads.countDocuments({ ...cq, paid: true, paidAt: { $gte: start7 } }),
+      leads.countDocuments({ ...cq, status: 'contacted' }),
+      leads.countDocuments({ ...cq, status: 'access_sent' }),
+      leads.aggregate([{ $match: { ...cq, paid: true } }, { $group: { _id: null, n: { $sum: 1 }, sum: { $sum: '$amount' } } }]).toArray(),
+      ANY_PAID ? pendingCount(course) : Promise.resolve(0),
+      leads.aggregate([{ $match: { paid: true } }, { $group: { _id: '$course', n: { $sum: 1 }, sum: { $sum: '$amount' } } }]).toArray(),
     ]);
     const paidCount = rev[0] ? rev[0].n : 0, revenue = rev[0] ? rev[0].sum / 100 : 0;
-    res.json({ ok: true, items, stats: { total, today, week, contacted, accessSent, paid: paidCount, revenue, pending }, fee: FEE_PAISE / 100 });
+    const perCourse = Object.fromEntries(byCourse.map(r => [r._id, { paid: r.n, revenue: r.sum / 100 }]));
+    res.json({
+      ok: true, items,
+      stats: { total, today, week, contacted, accessSent, paid: paidCount, revenue, pending },
+      course: course || null,
+      courses: Object.values(COURSES).map(c => ({ ...publicCourse(c), ...(perCourse[c.id] || { paid: 0, revenue: 0 }) })),
+      fee: (cSel || COURSES[DEFAULT_COURSE]).feePaise / 100,   // kept for the old admin.html
+    });
   } catch (err) {
     console.error('GET /api/admin/leads', err);
     res.status(500).json({ ok: false, error: 'Server error' });
@@ -483,10 +579,10 @@ app.patch('/api/admin/leads/:id', requireAdmin, async (req, res) => {
   }
 });
 
-/* ---------- admin page (open http://YOUR-IP:PORT/admin) ----------
+/* ---------- admin page ----------
    admin.html file server.js ke bagal me (same folder) rakhni hai. */
 const ADMIN_FILE = path.join(__dirname, 'admin.html');
-app.get(['/admin', '/admin.html', '/playwright-admin'], (req, res) => {   // /playwright-admin = use this behind api.uncodemy.com
+app.get(['/admin', '/admin.html', '/playwright-admin', '/courses-admin'], (req, res) => {
   res.set({ 'X-Robots-Tag': 'noindex, nofollow', 'Cache-Control': 'no-store' });
   res.sendFile(ADMIN_FILE, err => {
     if (err) res.status(500).type('text').send('admin.html not found next to server.js');
@@ -494,15 +590,20 @@ app.get(['/admin', '/admin.html', '/playwright-admin'], (req, res) => {   // /pl
 });
 
 /* ---------- status ---------- */
-app.get('/', (req, res) => res.json({ ok: true, service: 'uncodemy-enroll-api', mode: PAID ? 'paid' : 'free', fee: FEE_PAISE / 100 }));
-app.get('/health', (req, res) => res.json({ ok: true, db: !!leads, mode: PAID ? 'paid' : 'free', fee: FEE_PAISE / 100 }));
+const statusInfo = () => ({ ok: true, service: 'uncodemy-enroll-api', courses: Object.values(COURSES).map(publicCourse) });
+app.get('/', (req, res) => res.json(statusInfo()));
+app.get('/health', (req, res) => res.json({ ...statusInfo(), db: !!leads }));
 app.use((req, res) => res.status(404).json({ ok: false, error: 'Not found' }));
 
 connectDb()
   .then(() => app.listen(PORT, () => {
     console.log(`✓ API running on port ${PORT}`);
-    console.log(PAID ? `✓ PAID mode: ${rupees(FEE_PAISE)} flat (no GST added) via Razorpay (${RAZORPAY_KEY_ID.startsWith('rzp_test') ? 'TEST keys' : 'LIVE keys'})` : '✓ FREE mode (COURSE_FEE = 0)');
-    if (PAID && !RAZORPAY_WEBHOOK_SECRET) console.warn('⚠ RAZORPAY_WEBHOOK_SECRET not set — webhook backup is off.');
+    for (const c of Object.values(COURSES)) {
+      console.log(`  • ${c.id.padEnd(22)} ${c.paid ? rupees(c.feePaise) + ' (no GST added)' : 'FREE'}`);
+    }
+    if (ANY_PAID) console.log(`✓ Razorpay ${RAZORPAY_KEY_ID.startsWith('rzp_test') ? 'TEST keys' : 'LIVE keys'}`);
+    if (String(FEE_OVERRIDE).trim() !== '') console.warn(`⚠ FEE_OVERRIDE=${FEE_OVERRIDE} is ON — every course charges this. Remove it before going live!`);
+    if (ANY_PAID && !RAZORPAY_WEBHOOK_SECRET) console.warn('⚠ RAZORPAY_WEBHOOK_SECRET not set — webhook backup is off.');
   }))
   .catch(err => { console.error('✗ MongoDB connection failed:', err.message); process.exit(1); });
 
