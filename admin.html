@@ -73,6 +73,17 @@
   .kpi.ok b { color: var(--ok); }
   .kpi.wait b { color: var(--wait); }
 
+  /* ---------- Course switcher + per-course cards ---------- */
+  .course-select { padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font-weight: 600; min-width: 220px; max-width: 340px; }
+  .courses { max-width: 1400px; margin: 0 auto; padding: 12px 20px 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+  .ccard { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; text-align: left; display: grid; gap: 2px; }
+  .ccard:hover { border-color: var(--primary); }
+  .ccard[aria-pressed=true] { border-color: var(--primary); background: var(--primary-soft); }
+  .ccard .t { font-weight: 700; font-size: 14px; }
+  .ccard .f { color: var(--muted); font-size: 12px; }
+  .ccard .n { font-size: 13px; color: var(--ok); font-weight: 600; }
+  .pill.course { background: var(--page); color: var(--muted); border: 1px solid var(--line); margin-right: 6px; }
+
   /* ---------- Layout ---------- */
   main { max-width: 1400px; margin: 0 auto; padding: 20px; display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 20px; align-items: start; }
@@ -137,6 +148,8 @@
 
   @media (max-width: 900px) {
     .kpis { grid-template-columns: repeat(2, 1fr); padding: 16px 16px 0; }
+    .courses { padding: 12px 16px 0; }
+    .course-select { min-width: 0; flex: 1; }
     main { grid-template-columns: 1fr; padding: 16px; }
     .bar { padding: 12px 16px; }
     .detail { position: fixed; inset: 0; max-height: none; border-radius: 0; z-index: 40; }
@@ -154,7 +167,7 @@
 <div id="loginView" class="login-wrap hidden">
   <form class="login" id="loginForm" novalidate>
     <h1>Admin login</h1>
-    <p>Playwright course · payments. Server ki <b>.env</b> wali <b>ADMIN_KEY</b> daalein.</p>
+    <p>Uncodemy recorded courses · payments. Server ki <b>.env</b> wali <b>ADMIN_KEY</b> daalein.</p>
     <label for="adminKey">Admin key</label>
     <input id="adminKey" type="password" autocomplete="current-password" required />
     <button class="btn btn-primary" type="submit" id="loginBtn">Log in</button>
@@ -166,7 +179,8 @@
 <div id="appView" class="hidden">
   <header>
     <div class="bar">
-      <h1>Payments <small>Playwright course</small></h1>
+      <h1>Payments <small id="courseLabel">All courses</small></h1>
+      <select class="course-select" id="courseSel" aria-label="Course"><option value="">All courses</option></select>
       <button class="btn btn-ghost" id="refreshBtn" type="button">↻ Refresh</button>
       <button class="btn btn-ghost" id="csvBtn" type="button">⬇ Export CSV</button>
       <button class="btn btn-ghost" id="logoutBtn" type="button">Log out</button>
@@ -179,6 +193,7 @@
     <div class="kpi wait"><small>Form bhara, pay nahi kiya</small><b id="kPending">0</b></div>
     <div class="kpi"><small>Paid today</small><b id="kToday">0</b></div>
   </div>
+  <div class="courses" id="courseCards" aria-label="Courses"></div>
 
   <main>
     <section aria-label="Payment list">
@@ -209,7 +224,9 @@
 const API = "";
 const KEY_NAME = "uc_admin_key";
 const PER_PAGE = 20;
-const state = { tab: "paid", search: "", page: 1, items: [], selectedKey: null };
+const COURSE_KEY = "uc_admin_course";
+const state = { tab: "paid", search: "", page: 1, items: [], selectedKey: null, course: (() => { try { return sessionStorage.getItem(COURSE_KEY) || ""; } catch { return ""; } })(), courses: [] };
+const courseName = (id, fallback) => (state.courses.find((c) => c.id === id) || {}).title || fallback || id || "";
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, props = {}, ...children) => {
@@ -225,6 +242,8 @@ const itemKey = (it) => (it.pending ? "p_" : "l_") + it._id;
 const initials = (name) => String(name || "?").trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
 const STATUS = [["new", "New"], ["contacted", "Called"], ["access_sent", "Access sent"], ["not_interested", "Not interested"]];
 const statusLabel = (s) => (STATUS.find((x) => x[0] === s) || [0, "New"])[1];
+
+const shortCourse = (it) => courseName(it.course, it.courseTitle).replace(/\s+—\s+Recorded Course$/, "").replace(/ Automation$/, "");
 
 function payPill(it) {
   if (it.pending) return el("span", { className: "pill NotPaid", textContent: "Not paid" });
@@ -289,6 +308,7 @@ async function loadList(keepPage) {
   const q = new URLSearchParams({ limit: 2000 });
   if (state.tab) q.set("pay", state.tab);
   if (state.search) q.set("search", state.search);
+  if (state.course) q.set("course", state.course);
 
   if (!state.items.length) $("list").replaceChildren(el("div", { className: "empty", textContent: "Loading…" }));
   const data = await api("/api/admin/leads?" + q);
@@ -297,11 +317,53 @@ async function loadList(keepPage) {
   $("kPaid").textContent = s.paid; $("kRev").textContent = inr(s.revenue);
   $("kPending").textContent = s.pending || 0; $("kToday").textContent = s.today;
 
+  state.courses = data.courses || [];
+  if (state.course && !state.courses.some((c) => c.id === state.course)) { setCourse(""); return loadList(); }
+  renderCourses();
+
   state.items = data.items || [];
   if (!keepPage) state.page = 1;
   renderList();
   return data;
 }
+
+/* ---------- Course switcher ---------- */
+function setCourse(id) {
+  state.course = id || "";
+  try { state.course ? sessionStorage.setItem(COURSE_KEY, state.course) : sessionStorage.removeItem(COURSE_KEY); } catch {}
+}
+function renderCourses() {
+  const sel = $("courseSel");
+  sel.replaceChildren(el("option", { value: "", textContent: "All courses" }),
+    ...state.courses.map((c) => el("option", { value: c.id, textContent: `${c.title} · ${c.paid ? inr(c.fee) : "Free"}` })));
+  sel.value = state.course;
+  $("courseLabel").textContent = state.course ? courseName(state.course) : "All courses";
+  document.title = "Payments · " + (state.course ? courseName(state.course) : "All courses") + " · Admin";
+
+  const all = el("button", { className: "ccard", type: "button" },
+    el("span", { className: "t", textContent: "All courses" }),
+    el("span", { className: "f", textContent: state.courses.length + " courses" }),
+    el("span", { className: "n", textContent: state.courses.reduce((a, c) => a + (c.paid || 0), 0) + " paid · " + inr(state.courses.reduce((a, c) => a + (c.revenue || 0), 0)) }));
+  all.setAttribute("aria-pressed", String(!state.course));
+  all.addEventListener("click", () => switchCourse(""));
+  const cards = state.courses.map((c) => {
+    const b = el("button", { className: "ccard", type: "button" },
+      el("span", { className: "t", textContent: c.title.replace(/\s+—\s+Recorded Course$/, "") }),
+      el("span", { className: "f", textContent: "Price " + (c.fee ? inr(c.fee) : "Free") }),
+      el("span", { className: "n", textContent: (c.paid || 0) + " paid · " + inr(c.revenue || 0) }));
+    b.setAttribute("aria-pressed", String(state.course === c.id));
+    b.addEventListener("click", () => switchCourse(c.id));
+    return b;
+  });
+  $("courseCards").replaceChildren(all, ...cards);
+}
+function switchCourse(id) {
+  setCourse(id);
+  state.items = [];
+  closeDetail();
+  loadList().catch((err) => toast(err.message));
+}
+$("courseSel").addEventListener("change", (e) => switchCourse(e.target.value));
 
 function renderList() {
   const total = state.items.length;
@@ -332,6 +394,7 @@ function renderRow(it) {
       el("div", { className: "sub", textContent: `${it.email} · ${it.phone}` })
     ),
     el("div", { className: "right" },
+      state.course ? null : el("span", { className: "pill course", textContent: shortCourse(it) }),
       payPill(it),
       el("time", { textContent: fmtDate(when) })
     )
@@ -408,7 +471,9 @@ function renderDetail(it) {
   // quick contact
   const contact = el("div", { className: "contact" },
     el("a", { className: "btn btn-ghost", href: "tel:+91" + it.phone, textContent: "📞 Call" }),
-    el("a", { className: "btn btn-wa", href: "https://wa.me/91" + it.phone, target: "_blank", rel: "noopener", textContent: "WhatsApp" }),
+    el("a", { className: "btn btn-wa", href: "https://wa.me/91" + it.phone + "?text=" + encodeURIComponent(
+      `Hi ${String(it.name || "").split(" ")[0]}, this is Uncodemy regarding your ${courseName(it.course, it.courseTitle)} enrollment.` +
+      (it.pending ? " Your payment was not completed — can we help you finish it?" : "")), target: "_blank", rel: "noopener", textContent: "WhatsApp" }),
     el("a", { className: "btn btn-ghost", href: "mailto:" + it.email, textContent: "✉ Email" })
   );
 
@@ -443,7 +508,7 @@ function renderDetail(it) {
   const FIELDS = [
     ["Email", it.email],
     ["Mobile number", it.phone ? "+91 " + it.phone : ""],
-    ["Course", it.course],
+    ["Course", courseName(it.course, it.courseTitle)],
     ["Amount", it.paid || it.pending ? inr((it.amount || 0) / 100) + " (no GST)" : "Free"],
     ["Payment ID", it.paymentId, true],
     ["Order ID", it.orderId, true],
@@ -483,12 +548,12 @@ $("csvBtn").addEventListener("click", () => {
   const lines = [head.map(csvCell).join(",")].concat(state.items.map((l) => {
     const u = l.utm || {};
     const pay = l.pending ? "Not paid" : l.paid ? "Paid" : "Free";
-    return [ist(l.createdAt), l.name, l.phone, l.email, l.course, pay, (l.paid || l.pending) ? (l.amount || 0) / 100 : 0,
+    return [ist(l.createdAt), l.name, l.phone, l.email, courseName(l.course, l.courseTitle), pay, (l.paid || l.pending) ? (l.amount || 0) / 100 : 0,
       l.paymentId, l.orderId, ist(l.paidAt), l.attempts || 1, l.pending ? "payment pending" : statusLabel(l.status), l.note,
       u.source, u.medium, u.campaign, l.page].map(csvCell).join(",");
   }));
   const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
-  const a = el("a", { href: URL.createObjectURL(blob), download: `playwright-${state.tab || "all"}-${new Date().toISOString().slice(0, 10)}.csv` });
+  const a = el("a", { href: URL.createObjectURL(blob), download: `${state.course || "all-courses"}-${state.tab || "all"}-${new Date().toISOString().slice(0, 10)}.csv` });
   document.body.append(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 });
