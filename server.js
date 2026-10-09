@@ -51,7 +51,7 @@ const COURSE_LIST = [
   {
     id: 'playwright',
     title: 'Playwright Testing — Recorded Course',
-    fee: 4999,
+    fee: 1499,
     url: SITE + '/recorded/course/playwright-testing/',
     thankyou: SITE + '/recorded/course/playwright-testing/thankyou',
   },
